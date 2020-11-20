@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/lists_fragment">
+
+    <fragment
+        android:id="@+id/lists_fragment"
+        android:name="com.ozzikrangir.productlist.ui.main.ListsFragment"
+        android:label="@string/first_fragment_label"
+        tools:layout="@layout/fragment_lists">
+        <action
+            android:id="@+id/action_lists_fragment_to_products_fragment"
+            app:destination="@id/products_fragment"
+            app:enterAnim="@anim/nav_default_enter_anim"
+            app:exitAnim="@anim/nav_default_exit_anim"
+            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
+            app:popExitAnim="@anim/nav_default_pop_exit_anim">
+            <argument
+                android:name="listId"
+                android:defaultValue="0"
+                app:argType="integer" />
+        </action>
+
+    </fragment>
+    <fragment
+        android:id="@+id/products_fragment"
+        android:name="com.ozzikrangir.productlist.ui.details.ProductsFragment"
+        android:label="ProductsFragment">
+        <argument
+            android:name="listId"
+            android:defaultValue="0"
+            app:argType="integer" />
+    </fragment>
+    <activity
+        android:id="@+id/mainActivity"
+        android:name="com.ozzikrangir.productlist.ui.main.MainActivity"
+        android:label="main_activity"
+        tools:layout="@layout/main_activity" >
+        <argument
+            android:name="listId"
+            android:defaultValue="0"
+            app:argType="integer" />
+    </activity>
+
+    <!--        <action-->
+    <!--            android:id="@+id/action_FirstFragment_to_SecondFragment"-->
+    <!--            app:destination="@id/SecondFragment" />-->
+    <!--    </fragment>-->
+    <!--    <fragment-->
+    <!--        android:id="@+id/SecondFragment"-->
+    <!--        android:name="com.ozzikrangir.productlist.SecondFragment"-->
+    <!--        android:label="@string/second_fragment_label"-->
+    <!--        tools:layout="@layout/fragment_second">-->
+
+    <!--        <action-->
+    <!--            android:id="@+id/action_SecondFragment_to_FirstFragment"-->
+    <!--            app:destination="@id/FirstFragment" />-->
+    <!--    </fragment>-->
+</navigation>
