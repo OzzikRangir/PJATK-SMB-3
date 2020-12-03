@@ -30,13 +30,13 @@ class ProductRecyclerViewAdapter(
 ) : RecyclerView.Adapter<ProductRecyclerViewAdapter.ViewHolder>() {
 
     var values: List<Product> = ArrayList()
-    var selected: Product? = null
-    var alertDialog: AlertDialog? = null
+    private var selected: Product? = null
+    private var alertDialog: AlertDialog? = null
+
 
     private fun showPopupMenu(v: View, item: Product) {
         PopupMenu(parentFragment.context, v).apply {
             setOnMenuItemClickListener {
-                println(item)
                 when (it.itemId) {
                     R.id.action_edit -> {
                         selected = item
@@ -121,7 +121,7 @@ class ProductRecyclerViewAdapter(
         val item = values[position]
         holder.idView.text = item.name
         val format: NumberFormat = NumberFormat.getCurrencyInstance()
-        format.maximumFractionDigits = 0
+        format.maximumFractionDigits = 2
         format.currency = Currency.getInstance(Locale.getDefault())
 
 

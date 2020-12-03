@@ -35,7 +35,7 @@ class ListsFragment : Fragment() {
         )
 
 
-        (activity as AppCompatActivity).supportActionBar?.setDisplayHomeAsUpEnabled(false);
+        (activity as AppCompatActivity).supportActionBar?.setDisplayHomeAsUpEnabled(false)
         // Set the adapter
         if (view is RecyclerView) {
             with(view) {

@@ -31,8 +31,8 @@ class ListsRecyclerViewAdapter(
 ) : RecyclerView.Adapter<ListsRecyclerViewAdapter.ViewHolder>() {
 
     var values: List<ProductsList> = ArrayList()
-    var selected: ProductsList? = null
-    var alertDialog: AlertDialog? = null
+    private var selected: ProductsList? = null
+    private var alertDialog: AlertDialog? = null
 
 
     private fun showPopupMenu(v: View, item: ProductsList) {
@@ -105,9 +105,9 @@ class ListsRecyclerViewAdapter(
 
         holder.idView.text = item.name
         holder.contentView.text =
-            item.date!!.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT))
+            item.date!!.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+                .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT))
         holder.itemView.setOnClickListener {
-            val bundle = bundleOf(ProductsFragment.ARG_PRODUCT_ID to item.id)
             val action = ListsFragmentDirections.actionListsFragmentToProductsFragment(item.id!!)
             action.arguments.putInt("listId", item.id!!)
             parentFragment.findNavController().navigate(action)
@@ -127,8 +127,5 @@ class ListsRecyclerViewAdapter(
         val idView: TextView = view.findViewById(R.id.item_name)
         val contentView: TextView = view.findViewById(R.id.content)
 
-//        override fun toString(): String {
-//            return super.toString() + " '" + contentView.text + "'"
-//        }
     }
 }

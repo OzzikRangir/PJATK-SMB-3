@@ -17,9 +17,9 @@ class ProductsListContentProvider : ContentProvider() {
     private val sURIMatcher = UriMatcher(UriMatcher.NO_MATCH)
 
     companion object {
-        val AUTHORITY = "com.ozzikrangir.productlist"
-        private val URI_NAME_LISTS = "lists"
-        private val URI_NAME_PRODUCTS = "products"
+        const val AUTHORITY = "com.ozzikrangir.productlist"
+        private const val URI_NAME_LISTS = "lists"
+        private const val URI_NAME_PRODUCTS = "products"
 
         val URI_PRODUCTS: Uri = Uri.parse(
             "content://" + AUTHORITY + "/" +
@@ -95,6 +95,25 @@ class ProductsListContentProvider : ContentProvider() {
                     "${DBHandler.TABLE_PRODUCT_LIST}.${DBHandler.COLUMN_MARK}"
                 )
             }
+            URI_PRODUCT_LIST_CODE -> {
+                val productId = uri.pathSegments.last()
+                val listId = uri.pathSegments.takeLast(2).first()
+                queryBuilder.tables =
+                    "${DBHandler.TABLE_PRODUCT_LIST}, ${DBHandler.TABLE_PRODUCT}"
+                queryBuilder.appendWhere(
+                    """${DBHandler.TABLE_PRODUCT_LIST}.${DBHandler.COLUMN_LIST_ID} = $listId
+                        AND ${DBHandler.TABLE_PRODUCT_LIST}.${DBHandler.COLUMN_PRODUCT_ID} = $productId
+                        AND ${DBHandler.TABLE_PRODUCT}.${DBHandler.COLUMN_ID} = $productId
+                    """.trimMargin()
+                )
+                projectionLocal = arrayOf(
+                    "${DBHandler.TABLE_PRODUCT_LIST}.${DBHandler.COLUMN_PRODUCT_ID}",
+                    "${DBHandler.TABLE_PRODUCT_LIST}.${DBHandler.COLUMN_QUANTITY}",
+                    "${DBHandler.TABLE_PRODUCT}.${DBHandler.COLUMN_PRODUCT_NAME}",
+                    "${DBHandler.TABLE_PRODUCT}.${DBHandler.COLUMN_PRICE}",
+                    "${DBHandler.TABLE_PRODUCT_LIST}.${DBHandler.COLUMN_MARK}"
+                )
+            }
             URI_ALL_LISTS_CODE -> {
                 queryBuilder.tables = DBHandler.TABLE_LIST
             }
@@ -130,7 +149,7 @@ class ProductsListContentProvider : ContentProvider() {
                 val queryBuilder = SQLiteQueryBuilder()
                 queryBuilder.tables = DBHandler.TABLE_PRODUCT
                 queryBuilder.appendWhere(
-                    "${DBHandler.COLUMN_PRODUCT_NAME} = ${values!!.get(DBHandler.COLUMN_PRODUCT_NAME)}"
+                    "${DBHandler.COLUMN_PRODUCT_NAME} = '${values!!.get(DBHandler.COLUMN_PRODUCT_NAME)}'"
                 )
                 val cursor = queryBuilder.query(
                     myDB?.readableDatabase,
@@ -172,10 +191,11 @@ class ProductsListContentProvider : ContentProvider() {
                     try {
                         sqlDB.insert(DBHandler.TABLE_PRODUCT_LIST, null, intersectionContent)
                     } catch (ex: SQLiteConstraintException) {
-
+                        return null
                     }
                 }
                 retUri = URI_NAME_LISTS
+                return Uri.parse("$retUri/$id/$productId")
             }
             else -> throw IllegalArgumentException("Unknown URI: $uri")
         }

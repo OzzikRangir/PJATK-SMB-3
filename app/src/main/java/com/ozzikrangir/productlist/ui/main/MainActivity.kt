@@ -1,13 +1,16 @@
 package com.ozzikrangir.productlist.ui.main
 
 import android.app.AlertDialog
+import android.content.ComponentName
 import android.content.ContentValues
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.*
 import android.widget.EditText
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.Toolbar
@@ -16,9 +19,11 @@ import androidx.preference.PreferenceManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.ozzikrangir.productlist.ui.details.ProductRecyclerViewAdapter
 import com.ozzikrangir.productlist.R
+import com.ozzikrangir.productlist.data.model.Product
 import com.ozzikrangir.productlist.data.provider.DBHandler
 import com.ozzikrangir.productlist.data.provider.ProductsListContentProvider
 import com.ozzikrangir.productlist.ui.settings.SettingsActivity
+import com.ozzikrangir.productlist.ui.utils.ProductContent
 
 
 class MainActivity : AppCompatActivity() {
@@ -28,12 +33,17 @@ class MainActivity : AppCompatActivity() {
     var listAdapter: ListsRecyclerViewAdapter? = null
     var productAdapter: ProductRecyclerViewAdapter? = null
     var listId: Int = 0
+    private var external = false
+    private var selected: Product? = null
+
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val alternative = preferences.getBoolean("alternative", false)
         if (alternative)
             setTheme(R.style.Theme_ProductListAlternative_NoActionBar)
-
+        listId = intent.getIntExtra("listId", listId)
+        val productId = intent.getIntExtra("productId", 0)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
         setSupportActionBar(findViewById(R.id.toolbar))
@@ -45,13 +55,12 @@ class MainActivity : AppCompatActivity() {
         var darkMode = preferences.getBoolean("darkmode", false)
         if (darkMode)
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-
         else
             AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         delegate.applyDayNight()
 
-        supportActionBar?.setDisplayHomeAsUpEnabled(false);
-        findViewById<FloatingActionButton>(R.id.add_fab).setOnClickListener { _ ->
+        supportActionBar?.setDisplayHomeAsUpEnabled(false)
+        findViewById<FloatingActionButton>(R.id.add_fab).setOnClickListener {
             when (navigator.findNavController().currentDestination!!.id) {
                 R.id.lists_fragment -> {
                     listInputDialog?.show()
@@ -100,21 +109,71 @@ class MainActivity : AppCompatActivity() {
                     DialogInterface.OnClickListener { _, _ ->
 
                         val name = productInputDialog?.findViewById<EditText>(editProductName)?.text
-                        val price = productInputDialog?.findViewById<EditText>(editProductPrice)?.text
+                        val price =
+                            productInputDialog?.findViewById<EditText>(editProductPrice)?.text
                         val quantity =
                             productInputDialog?.findViewById<EditText>(editProductQuantity)?.text
                         if (!(name.isNullOrEmpty() || price.isNullOrEmpty() || quantity.isNullOrEmpty())) {
-                            val values = ContentValues()
-                            values.put(DBHandler.COLUMN_PRODUCT_NAME, name.toString())
-                            values.put(DBHandler.COLUMN_PRICE, price.toString())
-                            values.put(DBHandler.COLUMN_QUANTITY, quantity.toString())
-                            contentResolver.insert(
-                                Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + listId),
-                                values
-                            )
+                            if (!external) {
+                                val values = ContentValues()
+                                values.put(DBHandler.COLUMN_PRODUCT_NAME, name.toString())
+                                values.put(DBHandler.COLUMN_PRICE, price.toString())
+                                values.put(DBHandler.COLUMN_QUANTITY, quantity.toString())
+                                val uri = contentResolver.insert(
+                                    Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + listId),
+                                    values
+                                )
+                                if (uri != null) {
+                                    Intent().also { intent ->
+                                        intent.action = "com.example.broadcast.MY_NOTIFICATION"
+                                        intent.component = ComponentName(
+                                            "com.ozzikrangir.productlistnotification",
+                                            "com.ozzikrangir.productlistnotification.Receiver"
+                                        )
+                                        val productId = uri.pathSegments.last()
+                                        intent.putExtra("listId", listId)
+                                        intent.putExtra("productId", productId.toInt())
+                                        intent.putExtra("productName", name.toString())
+                                        sendOrderedBroadcast(
+                                            intent,
+                                            "com.ozzikrangir.productlist.permissions.NOTIFICATION_PERMISSION"
+                                        )
+                                    }
+                                }
+                            } else if (selected != null) {
+                                val productValues = ContentValues()
+                                val listValues = ContentValues()
+                                if (selected?.name != name.toString())
+                                    productValues.put(
+                                        DBHandler.COLUMN_PRODUCT_NAME,
+                                        name.toString()
+                                    )
+                                if (selected?.price != price.toString().toFloat())
+                                    productValues.put(DBHandler.COLUMN_PRICE, price.toString())
+                                if (selected?.amount != quantity.toString().toInt())
+                                    listValues.put(DBHandler.COLUMN_QUANTITY, quantity.toString())
+                                if (!productValues.isEmpty)
+                                contentResolver.update(
+                                    Uri.parse(ProductsListContentProvider.URI_PRODUCTS.toString() + "/" + productId),
+                                    productValues,
+                                    null,
+                                    null
+                                )
+                                if (!listValues.isEmpty)
+                                contentResolver.update(
+                                    Uri.parse(ProductsListContentProvider.URI_PRODUCT_LISTS.toString() + "/" + listId + "/" + productId),
+                                    listValues,
+                                    null,
+                                    null
+                                )
+                                external = false
+                                selected = null
+                            }
+
                             productAdapter?.notifyDataSetChanged()
                             productInputDialog?.findViewById<EditText>(editProductName)?.text = null
-                            productInputDialog?.findViewById<EditText>(editProductPrice)?.text = null
+                            productInputDialog?.findViewById<EditText>(editProductPrice)?.text =
+                                null
                             productInputDialog?.findViewById<EditText>(editProductQuantity)?.text =
                                 null
                         } else {
@@ -131,7 +190,41 @@ class MainActivity : AppCompatActivity() {
                     })
             builder.create()
         }
-
+        productInputDialog?.setTitle(R.string.dialog_add_list_title)
+        external = false
+        if (listId != 0) {
+            val action = ListsFragmentDirections.actionListsFragmentToProductsFragment(listId)
+            action.arguments.putInt("listId", listId)
+            navigator.findNavController().navigate(action)
+            println(Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + listId + "/" + productId))
+            val it = contentResolver.query(
+                Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + listId + "/" + productId),
+                null,
+                null,
+                null
+            )
+            if (it!!.moveToNext()) {
+                selected =
+                    Product(
+                        it.getString(2),
+                        it.getFloat(3),
+                        it.getInt(0),
+                        listId,
+                        it.getInt(4) == 1,
+                        it.getInt(1)
+                    )
+                it.close()
+                external = true
+                productInputDialog?.show()
+                productInputDialog?.setTitle(R.string.dialog_edit_product_title)
+                productInputDialog?.findViewById<EditText>(R.id.edit_product_name)
+                    ?.setText(selected?.name)
+                productInputDialog?.findViewById<EditText>(R.id.edit_price_number)
+                    ?.setText(selected?.price.toString())
+                productInputDialog?.findViewById<EditText>(R.id.edit_quantity)
+                    ?.setText(selected?.amount.toString())
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -147,7 +240,6 @@ class MainActivity : AppCompatActivity() {
         return when (item.itemId) {
             R.id.action_settings -> {
                 val intent = Intent(this, SettingsActivity::class.java).apply {
-//                    putExtra(EXTRA_MESSAGE, message)
                 }
                 startActivity(intent)
                 true

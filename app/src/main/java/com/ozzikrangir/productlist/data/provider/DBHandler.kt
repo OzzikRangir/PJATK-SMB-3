@@ -17,20 +17,6 @@ class DBHandler(
     private val myCR: ContentResolver = context!!.contentResolver
 
     override fun onCreate(db: SQLiteDatabase) {
-        val CREATE_PRODUCTS_TABLE =
-            "CREATE TABLE $TABLE_PRODUCT($COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,$COLUMN_PRODUCT_NAME TEXT NOT NULL UNIQUE,$COLUMN_PRICE FLOAT)"
-        val CREATE_LIST_TABLE =
-            "CREATE TABLE $TABLE_LIST($COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,$COLUMN_LIST_NAME,$COLUMN_DATE DATETIME DEFAULT (datetime('now','localtime')))"
-        val CREATE_PRODUCT_LIST_TABLE =
-            """CREATE TABLE $TABLE_PRODUCT_LIST(
-                $COLUMN_PRODUCT_ID INTEGER NOT NULL,
-                $COLUMN_LIST_ID INTEGER NOT NULL,
-                $COLUMN_QUANTITY INTEGER NOT NULL,
-                $COLUMN_MARK BOOLEAN,
-                FOREIGN KEY($COLUMN_LIST_ID) REFERENCES $TABLE_LIST($COLUMN_ID),
-                FOREIGN KEY($COLUMN_PRODUCT_ID) REFERENCES $TABLE_PRODUCT($COLUMN_ID),
-                PRIMARY KEY($COLUMN_LIST_ID,$COLUMN_PRODUCT_ID)
-)""".trimMargin()
         db.execSQL(CREATE_PRODUCTS_TABLE)
         db.execSQL(CREATE_LIST_TABLE)
         db.execSQL(CREATE_PRODUCT_LIST_TABLE)
@@ -130,7 +116,7 @@ class DBHandler(
 //    }
 
     companion object {
-        private const val DATABASE_VERSION = 7
+        private const val DATABASE_VERSION = 8
         private const val DATABASE_NAME = "productDB.db"
         const val TABLE_LIST = "list"
         const val TABLE_PRODUCT = "product"
@@ -144,5 +130,19 @@ class DBHandler(
         const val COLUMN_QUANTITY = "quantity"
         const val COLUMN_DATE = "date"
         const val COLUMN_MARK = "mark"
+        const val CREATE_PRODUCTS_TABLE =
+            "CREATE TABLE $TABLE_PRODUCT($COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,$COLUMN_PRODUCT_NAME TEXT NOT NULL UNIQUE,$COLUMN_PRICE FLOAT)"
+        const val CREATE_LIST_TABLE =
+            "CREATE TABLE $TABLE_LIST($COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,$COLUMN_LIST_NAME,$COLUMN_DATE DATETIME DEFAULT (datetime('now','localtime')))"
+        val CREATE_PRODUCT_LIST_TABLE =
+            """CREATE TABLE $TABLE_PRODUCT_LIST(
+                $COLUMN_PRODUCT_ID INTEGER NOT NULL,
+                $COLUMN_LIST_ID INTEGER NOT NULL,
+                $COLUMN_QUANTITY INTEGER NOT NULL,
+                $COLUMN_MARK BOOLEAN,
+                FOREIGN KEY($COLUMN_LIST_ID) REFERENCES $TABLE_LIST($COLUMN_ID),
+                FOREIGN KEY($COLUMN_PRODUCT_ID) REFERENCES $TABLE_PRODUCT($COLUMN_ID),
+                PRIMARY KEY($COLUMN_LIST_ID,$COLUMN_PRODUCT_ID)
+)""".trimMargin()
     }
 }

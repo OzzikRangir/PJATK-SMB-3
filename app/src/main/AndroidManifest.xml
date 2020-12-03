@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ozzikrangir.productlist">
 
+    <permission android:name="com.ozzikrangir.productlist.permissions.NOTIFICATION_PERMISSION"/>
+    <uses-permission android:name="com.ozzikrangir.productlist.permissions.NOTIFICATION_PERMISSION" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -34,5 +36,4 @@
             android:enabled="true"
             android:exported="true" />
     </application>
-
 </manifest>

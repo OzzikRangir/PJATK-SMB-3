@@ -30,7 +30,7 @@ class ProductsFragment : Fragment() {
 
     private var columnCount = 2
     private var productId = 1
-    val args: ProductsFragmentArgs by navArgs()
+    private val args: ProductsFragmentArgs by navArgs()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -48,7 +48,7 @@ class ProductsFragment : Fragment() {
     ): View? {
         (activity as MainActivity).listId = productId
         val view = inflater.inflate(R.layout.fragment_lists, container, false)
-        (activity as AppCompatActivity).supportActionBar?.setDisplayHomeAsUpEnabled(true);
+        (activity as AppCompatActivity).supportActionBar?.setDisplayHomeAsUpEnabled(true)
         // Set the adapter
         if (view is RecyclerView) {
             with(view) {
