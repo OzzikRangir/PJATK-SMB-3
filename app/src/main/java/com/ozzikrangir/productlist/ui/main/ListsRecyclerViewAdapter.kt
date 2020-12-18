@@ -1,9 +1,7 @@
 package com.ozzikrangir.productlist.ui.main
 
 import android.app.AlertDialog
-import android.content.ContentValues
 import android.content.DialogInterface
-import android.net.Uri
 import android.os.Build
 import android.view.LayoutInflater
 import android.view.View
@@ -12,15 +10,13 @@ import android.widget.EditText
 import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.annotation.RequiresApi
-import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.ozzikrangir.productlist.R
-import com.ozzikrangir.productlist.data.model.ProductsList
-import com.ozzikrangir.productlist.data.provider.DBHandler
-import com.ozzikrangir.productlist.data.provider.ProductsListContentProvider
-import com.ozzikrangir.productlist.ui.details.ProductsFragment
+import com.ozzikrangir.productlist.data.RealtimeDBConnector
+import com.ozzikrangir.productlist.data.model.ProductList
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -30,12 +26,12 @@ class ListsRecyclerViewAdapter(
     private val parentFragment: Fragment
 ) : RecyclerView.Adapter<ListsRecyclerViewAdapter.ViewHolder>() {
 
-    var values: List<ProductsList> = ArrayList()
-    private var selected: ProductsList? = null
+    var values: List<ProductList> = ArrayList()
+    private var selected: ProductList? = null
     private var alertDialog: AlertDialog? = null
 
 
-    private fun showPopupMenu(v: View, item: ProductsList) {
+    private fun showPopupMenu(v: View, item: ProductList) {
         PopupMenu(parentFragment.context, v).apply {
             setOnMenuItemClickListener {
                 when (it.itemId) {
@@ -47,11 +43,7 @@ class ListsRecyclerViewAdapter(
                         true
                     }
                     R.id.action_delete -> {
-                        parentFragment.context?.contentResolver?.delete(
-                            Uri.parse(
-                                ProductsListContentProvider.URI_LISTS.toString() + "/" + item.id
-                            ), null, null
-                        )
+                        RealtimeDBConnector.setList(item, true)
                         notifyDataSetChanged()
                         true
                     }
@@ -77,14 +69,10 @@ class ListsRecyclerViewAdapter(
                     DialogInterface.OnClickListener { _, _ ->
                         val name =
                             alertDialog?.findViewById<EditText>(R.id.edit_list_name)?.text.toString()
-                        val values = ContentValues()
-                        values.put(DBHandler.COLUMN_LIST_NAME, name)
-                        parentFragment.context?.contentResolver?.update(
-                            Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + selected?.id),
-                            values,
-                            null,
-                            null
-                        )
+                        if (selected!= null){
+                            selected!!.name = name
+                            RealtimeDBConnector.setList(selected!!)
+                        }
                         selected = null
                         notifyDataSetChanged()
                     })
@@ -105,8 +93,9 @@ class ListsRecyclerViewAdapter(
 
         holder.idView.text = item.name
         holder.contentView.text =
-            item.date!!.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
-                .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT))
+            Instant.ofEpochMilli(item.date).atZone(ZoneId.systemDefault()).toLocalDateTime().format(
+                DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT)
+            )
         holder.itemView.setOnClickListener {
             val action = ListsFragmentDirections.actionListsFragmentToProductsFragment(item.id!!)
             action.arguments.putInt("listId", item.id!!)

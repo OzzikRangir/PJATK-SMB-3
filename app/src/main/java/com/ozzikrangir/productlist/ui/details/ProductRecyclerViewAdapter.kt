@@ -18,9 +18,9 @@ import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import com.ozzikrangir.productlist.R
+import com.ozzikrangir.productlist.data.RealtimeDBConnector
 import com.ozzikrangir.productlist.data.model.Product
-import com.ozzikrangir.productlist.data.provider.DBHandler
-import com.ozzikrangir.productlist.data.provider.ProductsListContentProvider
+import com.ozzikrangir.productlist.data.model.ProductInfo
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -29,12 +29,13 @@ class ProductRecyclerViewAdapter(
     private val parentFragment: Fragment
 ) : RecyclerView.Adapter<ProductRecyclerViewAdapter.ViewHolder>() {
 
-    var values: List<Product> = ArrayList()
-    private var selected: Product? = null
+    var values: List<ProductInfo> = ArrayList()
+    private var selected: ProductInfo? = null
     private var alertDialog: AlertDialog? = null
 
 
-    private fun showPopupMenu(v: View, item: Product) {
+    @RequiresApi(Build.VERSION_CODES.N)
+    private fun showPopupMenu(v: View, item: ProductInfo) {
         PopupMenu(parentFragment.context, v).apply {
             setOnMenuItemClickListener {
                 when (it.itemId) {
@@ -42,19 +43,20 @@ class ProductRecyclerViewAdapter(
                         selected = item
                         alertDialog?.show()
                         alertDialog?.findViewById<EditText>(R.id.edit_product_name)
-                            ?.setText(selected?.name)
+                            ?.setText(selected?.product?.name)
                         alertDialog?.findViewById<EditText>(R.id.edit_price_number)
-                            ?.setText(selected?.price.toString())
+                            ?.setText(selected?.product?.price.toString())
                         alertDialog?.findViewById<EditText>(R.id.edit_quantity)
-                            ?.setText(selected?.amount.toString())
+                            ?.setText(selected?.amount!!.toString())
                         true
                     }
                     R.id.action_delete -> {
-                        parentFragment.context?.contentResolver?.delete(
-                            Uri.parse(
-                                ProductsListContentProvider.URI_LISTS.toString() + "/" + item.list_id + "/" + item.id
-                            ), null, null
-                        )
+                        val list =
+                            RealtimeDBConnector.user!!.privateListsObj.firstOrNull { prod -> prod.products.any { obj -> obj.id == item.id } }
+                        if (list != null) {
+                            list.products.removeIf { prod -> prod.id == item.id }
+                            RealtimeDBConnector.setList(list)
+                        }
                         notifyDataSetChanged()
                         true
                     }
@@ -83,23 +85,20 @@ class ProductRecyclerViewAdapter(
                             alertDialog?.findViewById<EditText>(R.id.edit_price_number)?.text.toString()
                         val quantity =
                             alertDialog?.findViewById<EditText>(R.id.edit_quantity)?.text.toString()
-                        val productValues = ContentValues()
-                        val listValues = ContentValues()
-                        productValues.put(DBHandler.COLUMN_PRODUCT_NAME, name)
-                        productValues.put(DBHandler.COLUMN_PRICE, price)
-                        listValues.put(DBHandler.COLUMN_QUANTITY, quantity)
-                        parentFragment.context?.contentResolver?.update(
-                            Uri.parse(ProductsListContentProvider.URI_PRODUCTS.toString() + "/" + selected?.id),
-                            productValues,
-                            null,
-                            null
-                        )
-                        parentFragment.context?.contentResolver?.update(
-                            Uri.parse(ProductsListContentProvider.URI_PRODUCT_LISTS.toString() + "/" + selected?.list_id + "/" + selected?.id),
-                            listValues,
-                            null,
-                            null
-                        )
+
+                        val list =
+                            RealtimeDBConnector.user!!.privateListsObj.firstOrNull { it -> it.products.any { obj -> obj.id == selected?.id } }
+                        val product =
+                            RealtimeDBConnector.user!!.products.firstOrNull { it -> it.id == selected?.id }
+
+                        if (product != null && list != null) {
+                            product.name = name
+                            product.price = price.toFloat()
+                            RealtimeDBConnector.setProduct(product)
+
+                            list.products.first { it.id == selected?.id }.amount = quantity.toInt()
+                            RealtimeDBConnector.setList(list)
+                        }
                         selected = null
                         notifyDataSetChanged()
                     })
@@ -119,32 +118,28 @@ class ProductRecyclerViewAdapter(
 
 
         val item = values[position]
-        holder.idView.text = item.name
+        holder.idView.text = item.product!!.name
         val format: NumberFormat = NumberFormat.getCurrencyInstance()
         format.maximumFractionDigits = 2
         format.currency = Currency.getInstance(Locale.getDefault())
 
 
-        holder.contentView.text = format.format(item.price)
+        holder.contentView.text = format.format(item.product!!.price)
 
         holder.quantity.text = item.amount.toString()
-        holder.checkBox.isChecked = item.marked == true
+        holder.checkBox.isChecked = item.marked
         holder.itemView.setOnLongClickListener { view ->
             showPopupMenu(view, item)
             return@setOnLongClickListener true
         }
         holder.checkBox.setOnCheckedChangeListener { _, isChecked ->
-            val values = ContentValues()
-            values.put(DBHandler.COLUMN_MARK, isChecked)
-            parentFragment.context?.contentResolver?.update(
-                Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + item.list_id + "/" + item.id),
-                values,
-                null,
-                null
-            )
-
+            val list =
+                RealtimeDBConnector.user!!.privateListsObj.firstOrNull { it -> it.products.any { obj -> obj.id == item.id } }
+            if (list != null) {
+                list.products.first { it.id == item.id }.marked = isChecked
+                RealtimeDBConnector.setList(list)
+            }
         }
-
     }
 
 

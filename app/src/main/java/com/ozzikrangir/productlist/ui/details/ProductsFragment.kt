@@ -18,8 +18,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.ozzikrangir.productlist.R
-import com.ozzikrangir.productlist.data.model.Product
-import com.ozzikrangir.productlist.data.provider.ProductsListContentProvider
 import com.ozzikrangir.productlist.ui.main.MainActivity
 import com.ozzikrangir.productlist.ui.utils.ProductContent
 
@@ -75,30 +73,7 @@ class ProductsFragment : Fragment() {
                 val observer: RecyclerView.AdapterDataObserver =
                     object : RecyclerView.AdapterDataObserver() {
                         override fun onChanged() {
-                            val items = context.contentResolver.query(
-                                Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + productId),
-                                null,
-                                null,
-                                null
-                            )
-                            ProductContent.ITEMS.clear()
-//                            ProductContent.ITEMS.add(Product(null,null,0,null,false,null))
-                            if (items != null) ProductContent.ITEMS.addAll(
-                                generateSequence { if (items.moveToNext()) items else null }
-                                    .map {
-                                        Product(
-                                            it.getString(5),
-                                            it.getFloat(6),
-                                            it.getInt(3),
-                                            it.getInt(0),
-                                            it.getInt(7) == 1,
-                                            it.getInt(4)
-                                        )
-                                    }
-                                    .toMutableList()
-                            )
-                            items!!.close()
-                            (adapter as ProductRecyclerViewAdapter).values = ProductContent.ITEMS
+                            (adapter as ProductRecyclerViewAdapter).values = ProductContent.ITEMS[productId]!!
                             super.onChanged()
                         }
                     }

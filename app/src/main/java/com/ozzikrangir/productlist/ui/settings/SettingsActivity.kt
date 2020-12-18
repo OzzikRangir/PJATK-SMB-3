@@ -1,7 +1,5 @@
 package com.ozzikrangir.productlist.ui.settings
 
-import android.app.TaskStackBuilder
-import android.content.Intent
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
@@ -9,7 +7,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import com.ozzikrangir.productlist.R
-import com.ozzikrangir.productlist.ui.main.MainActivity
 
 
 class SettingsActivity : AppCompatActivity() {
@@ -22,7 +19,7 @@ class SettingsActivity : AppCompatActivity() {
         else
             setTheme(R.style.Theme_ProductList)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.settings_activity)
+        setContentView(R.layout.activity_settings)
         if (savedInstanceState == null) {
             supportFragmentManager
                 .beginTransaction()

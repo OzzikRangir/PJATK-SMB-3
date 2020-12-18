@@ -8,12 +8,9 @@ import android.view.ViewGroup
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.ozzikrangir.productlist.R
-import com.ozzikrangir.productlist.data.model.ProductsList
-import com.ozzikrangir.productlist.data.provider.ProductsListContentProvider
 import com.ozzikrangir.productlist.ui.utils.ListsContent
 import java.text.SimpleDateFormat
 
@@ -30,10 +27,6 @@ class ListsFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_lists, container, false)
-        val iso8601Format = SimpleDateFormat(
-            "yyyy-MM-dd HH:mm:ss"
-        )
-
 
         (activity as AppCompatActivity).supportActionBar?.setDisplayHomeAsUpEnabled(false)
         // Set the adapter
@@ -44,27 +37,27 @@ class ListsFragment : Fragment() {
                 val observer: RecyclerView.AdapterDataObserver =
                     object : RecyclerView.AdapterDataObserver() {
                         override fun onChanged() {
-                            val items = context.contentResolver.query(
-                                ProductsListContentProvider.URI_LISTS,
-                                null,
-                                null,
-                                null
-                            )
-                            ListsContent.ITEMS.clear()
-                            if (items != null) ListsContent.ITEMS.addAll(
-                                generateSequence { if (items.moveToNext()) items else null }
-                                    .map {
-                                        ProductsList(
-                                            it.getString(1),
-                                            iso8601Format.parse(it.getString(2)),
-                                            it.getInt(
-                                                0
-                                            )
-                                        )
-                                    }
-                                    .toMutableList()
-                            )
-                            items!!.close()
+//                            val items = context.contentResolver.query(
+//                                ProductsListContentProvider.URI_LISTS,
+//                                null,
+//                                null,
+//                                null
+//                            )
+//                            ListsContent.ITEMS.clear()
+//                            if (items != null) ListsContent.ITEMS.addAll(
+//                                generateSequence { if (items.moveToNext()) items else null }
+//                                    .map {
+//                                        ProductList(
+//                                            it.getString(1),
+//                                            0,
+//                                            it.getInt(
+//                                                0
+//                                            )
+//                                        )
+//                                    }
+//                                    .toMutableList()
+//                            )
+//                            items!!.close()
                             (adapter as ListsRecyclerViewAdapter).values = ListsContent.ITEMS
                             super.onChanged()
                         }

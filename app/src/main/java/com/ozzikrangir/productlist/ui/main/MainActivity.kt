@@ -2,10 +2,8 @@ package com.ozzikrangir.productlist.ui.main
 
 import android.app.AlertDialog
 import android.content.ComponentName
-import android.content.ContentValues
 import android.content.DialogInterface
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.*
@@ -17,16 +15,26 @@ import androidx.appcompat.widget.Toolbar
 import androidx.navigation.findNavController
 import androidx.preference.PreferenceManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.ozzikrangir.productlist.ui.details.ProductRecyclerViewAdapter
+import com.google.firebase.auth.FirebaseAuth
 import com.ozzikrangir.productlist.R
+import com.ozzikrangir.productlist.data.RealtimeDBConnector
 import com.ozzikrangir.productlist.data.model.Product
-import com.ozzikrangir.productlist.data.provider.DBHandler
-import com.ozzikrangir.productlist.data.provider.ProductsListContentProvider
+import com.ozzikrangir.productlist.data.model.ProductInfo
+import com.ozzikrangir.productlist.data.model.ProductList
+import com.ozzikrangir.productlist.data.model.User
+import com.ozzikrangir.productlist.ui.details.ProductRecyclerViewAdapter
+import com.ozzikrangir.productlist.ui.login.LoginActivity
 import com.ozzikrangir.productlist.ui.settings.SettingsActivity
-import com.ozzikrangir.productlist.ui.utils.ProductContent
 
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private var sInstance: MainActivity? = null
+        public fun getInstance(): MainActivity? {
+            return sInstance
+        }
+    }
 
     private var listInputDialog: AlertDialog? = null
     private var productInputDialog: AlertDialog? = null
@@ -36,16 +44,33 @@ class MainActivity : AppCompatActivity() {
     private var external = false
     private var selected: Product? = null
 
+    private lateinit var mAuth: FirebaseAuth
+
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        mAuth = FirebaseAuth.getInstance()
+
+        val currentUser = mAuth.currentUser
+        if (currentUser != null) {
+
+            RealtimeDBConnector.init()
+            RealtimeDBConnector.getUserData(currentUser.uid)
+            if (RealtimeDBConnector.user == null)
+                RealtimeDBConnector.addUser(User(currentUser.uid))
+        }
+
+
         val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val alternative = preferences.getBoolean("alternative", false)
         if (alternative)
             setTheme(R.style.Theme_ProductListAlternative_NoActionBar)
+
         listId = intent.getIntExtra("listId", listId)
         val productId = intent.getIntExtra("productId", 0)
+        sInstance = this;
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.main_activity)
+        setContentView(R.layout.activity_main)
         setSupportActionBar(findViewById(R.id.toolbar))
         val navigator: View = findViewById<View>(R.id.nav_host_fragment)
         val toolbar: Toolbar = findViewById<Toolbar>(R.id.toolbar)
@@ -80,9 +105,7 @@ class MainActivity : AppCompatActivity() {
                     DialogInterface.OnClickListener { _, _ ->
                         val name = listInputDialog?.findViewById<EditText>(editListName)?.text
                         if (!name.isNullOrEmpty()) {
-                            val values = ContentValues()
-                            values.put(DBHandler.COLUMN_LIST_NAME, name.toString())
-                            contentResolver.insert(ProductsListContentProvider.URI_LISTS, values)
+                            RealtimeDBConnector.setList(ProductList(name.toString(), id = RealtimeDBConnector.newListId))
                             listAdapter?.notifyDataSetChanged()
                             listInputDialog?.findViewById<EditText>(editListName)?.text = null
 
@@ -115,24 +138,36 @@ class MainActivity : AppCompatActivity() {
                             productInputDialog?.findViewById<EditText>(editProductQuantity)?.text
                         if (!(name.isNullOrEmpty() || price.isNullOrEmpty() || quantity.isNullOrEmpty())) {
                             if (!external) {
-                                val values = ContentValues()
-                                values.put(DBHandler.COLUMN_PRODUCT_NAME, name.toString())
-                                values.put(DBHandler.COLUMN_PRICE, price.toString())
-                                values.put(DBHandler.COLUMN_QUANTITY, quantity.toString())
-                                val uri = contentResolver.insert(
-                                    Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + listId),
-                                    values
+                                val id = RealtimeDBConnector.newProductId
+
+                                val product = Product(
+                                    name.toString(),
+                                    price.toString().toFloat(),
+                                    id,
+                                    RealtimeDBConnector.user!!
                                 )
-                                if (uri != null) {
+                                RealtimeDBConnector.setProduct(product)
+
+                                val list =
+                                    RealtimeDBConnector.user!!.privateListsObj.firstOrNull { list -> list.id == listId }
+                                if (list != null) {
+                                    val prodInfo = ProductInfo(
+                                        id,
+                                        false,
+                                        false,
+                                        quantity.toString().toInt(),
+                                        product
+                                    )
+                                    list.products.add(prodInfo)
+                                    RealtimeDBConnector.setList(list)
                                     Intent().also { intent ->
                                         intent.action = "com.example.broadcast.MY_NOTIFICATION"
                                         intent.component = ComponentName(
                                             "com.ozzikrangir.productlistnotification",
                                             "com.ozzikrangir.productlistnotification.Receiver"
                                         )
-                                        val productId = uri.pathSegments.last()
                                         intent.putExtra("listId", listId)
-                                        intent.putExtra("productId", productId.toInt())
+                                        intent.putExtra("productId", productId)
                                         intent.putExtra("productName", name.toString())
                                         sendOrderedBroadcast(
                                             intent,
@@ -140,42 +175,8 @@ class MainActivity : AppCompatActivity() {
                                         )
                                     }
                                 }
-                            } else if (selected != null) {
-                                val productValues = ContentValues()
-                                val listValues = ContentValues()
-                                if (selected?.name != name.toString())
-                                    productValues.put(
-                                        DBHandler.COLUMN_PRODUCT_NAME,
-                                        name.toString()
-                                    )
-                                if (selected?.price != price.toString().toFloat())
-                                    productValues.put(DBHandler.COLUMN_PRICE, price.toString())
-                                if (selected?.amount != quantity.toString().toInt())
-                                    listValues.put(DBHandler.COLUMN_QUANTITY, quantity.toString())
-                                if (!productValues.isEmpty)
-                                contentResolver.update(
-                                    Uri.parse(ProductsListContentProvider.URI_PRODUCTS.toString() + "/" + productId),
-                                    productValues,
-                                    null,
-                                    null
-                                )
-                                if (!listValues.isEmpty)
-                                contentResolver.update(
-                                    Uri.parse(ProductsListContentProvider.URI_PRODUCT_LISTS.toString() + "/" + listId + "/" + productId),
-                                    listValues,
-                                    null,
-                                    null
-                                )
-                                external = false
-                                selected = null
                             }
-
-                            productAdapter?.notifyDataSetChanged()
-                            productInputDialog?.findViewById<EditText>(editProductName)?.text = null
-                            productInputDialog?.findViewById<EditText>(editProductPrice)?.text =
-                                null
-                            productInputDialog?.findViewById<EditText>(editProductQuantity)?.text =
-                                null
+                        }else if (selected != null) {
                         } else {
                             TODO("TOASTER EMPTY NAME")
                         }
@@ -192,39 +193,6 @@ class MainActivity : AppCompatActivity() {
         }
         productInputDialog?.setTitle(R.string.dialog_add_list_title)
         external = false
-        if (listId != 0) {
-            val action = ListsFragmentDirections.actionListsFragmentToProductsFragment(listId)
-            action.arguments.putInt("listId", listId)
-            navigator.findNavController().navigate(action)
-            println(Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + listId + "/" + productId))
-            val it = contentResolver.query(
-                Uri.parse(ProductsListContentProvider.URI_LISTS.toString() + "/" + listId + "/" + productId),
-                null,
-                null,
-                null
-            )
-            if (it!!.moveToNext()) {
-                selected =
-                    Product(
-                        it.getString(2),
-                        it.getFloat(3),
-                        it.getInt(0),
-                        listId,
-                        it.getInt(4) == 1,
-                        it.getInt(1)
-                    )
-                it.close()
-                external = true
-                productInputDialog?.show()
-                productInputDialog?.setTitle(R.string.dialog_edit_product_title)
-                productInputDialog?.findViewById<EditText>(R.id.edit_product_name)
-                    ?.setText(selected?.name)
-                productInputDialog?.findViewById<EditText>(R.id.edit_price_number)
-                    ?.setText(selected?.price.toString())
-                productInputDialog?.findViewById<EditText>(R.id.edit_quantity)
-                    ?.setText(selected?.amount.toString())
-            }
-        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -244,6 +212,13 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
                 true
             }
+            R.id.action_logout -> {
+                mAuth.signOut()
+                val intent = Intent(this, LoginActivity::class.java).apply {
+                }
+                startActivity(intent)
+            true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -255,5 +230,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreateContextMenu(menu, v, menuInfo)
         val inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.menu_product, menu)
+    }
+
+    override fun onStart() {
+        super.onStart()
+//        if (RealtimeDBConnector.user!=null) {
+//            val product1 = Product("produkt", 21.37f, 1, RealtimeDBConnector.user!!)
+//            RealtimeDBConnector.setProduct(product1)
+//            val productList = ProductList("name", id = 1)
+//            val productInfo = ProductInfo(product1.id, amount = 21)
+//            productList.products.add(productInfo)
+//            RealtimeDBConnector.user!!.privateListsObj.add(productList)
+//            RealtimeDBConnector.setList(productList)
+//
+//        }
+//        println(RealtimeDBConnector.user!!.privateListsObj)
     }
 }

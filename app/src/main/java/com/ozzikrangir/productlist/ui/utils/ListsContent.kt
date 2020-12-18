@@ -1,10 +1,9 @@
 package com.ozzikrangir.productlist.ui.utils
 
-import com.ozzikrangir.productlist.data.model.ProductsList
+import com.ozzikrangir.productlist.data.model.ProductList
 import java.util.ArrayList
-import java.util.HashMap
 
 object ListsContent {
 
-    var ITEMS: MutableList<ProductsList> = ArrayList()
+    var ITEMS: MutableList<ProductList> = ArrayList()
 }
